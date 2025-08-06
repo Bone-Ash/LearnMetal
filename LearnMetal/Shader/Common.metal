@@ -11,20 +11,21 @@ using namespace metal;
 
 // 顶点缓冲区(vertex buffer)传入顶点着色器所用的数据结构
 struct VertexIn {
-    // float3 position 对应 Swift 中 SIMD3，表示顶点的坐标 xyz
-    // [[attribute(0)]] 表示让 Metal 从顶点缓冲区中的第 0 个属性提取数据（通常是位置）作为 position 值
-    float3 position [[attribute(0)]];
-    
-    // float4 color 的四个值是 rgba 颜色，同样 [[attribute(1)]] 表示从用顶点缓冲区的第 1 个属性作为 color
-    float4 color [[attribute(1)]];
+    float3 position [[attribute(0)]]; // 从顶点缓冲区中的第 0 个属性提取数据
+    float3 normal   [[attribute(1)]]; // 从顶点缓冲区中的第 1 个属性提取数据
 };
 
 // 顶点着色器根据传入数据 VertexIn 进行一系列改动后，将输出数据打包成 VertexOut
 struct VertexOut {
-    // 根据 VertexIn 的 position 进行坐标转换，变成 屏幕坐标 后传递给下一阶段
-    float4 position [[position]];
-    // VertexIn 传入的 color，多数情况为原封不动传递给下一个阶段，但具体如何实现还是看顶点着色器
-    float4 color;
+    float4 position [[position]]; // 标记为 [[position]] 意味着它是 屏幕坐标
+    float3 normal;                // 法线
+};
+
+// 光照
+struct Light {
+    float3 direction; // 方向
+    float3 color;     // 颜色
+    float intensity;  // 强度
 };
 
 // 全局变量 Uniforms
@@ -32,4 +33,6 @@ struct Uniforms {
     float4x4 modelMatrix;       // 模型矩阵
     float4x4 viewMatrix;        // 视图矩阵
     float4x4 projectionMatrix;  // 投影矩阵
+    float3x3 normalMatrix;      // 法线
+    Light mainLight;            // 光照
 };

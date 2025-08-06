@@ -11,6 +11,7 @@
 		1E3B4D912E435831002BAD42 /* ModelLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E3B4D902E435831002BAD42 /* ModelLoader.swift */; };
 		1E3B4D932E435842002BAD42 /* MeshBuffers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E3B4D922E435842002BAD42 /* MeshBuffers.swift */; };
 		1E3B4D962E435960002BAD42 /* truncated icosahedron.obj in Resources */ = {isa = PBXBuildFile; fileRef = 1E3B4D952E435960002BAD42 /* truncated icosahedron.obj */; };
+		1E3B4D982E435AEE002BAD42 /* Light.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E3B4D972E435AEE002BAD42 /* Light.swift */; };
 		1E5B22222E431DD200D5E754 /* Uniforms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5B22212E431DD200D5E754 /* Uniforms.swift */; };
 		1E5B222F2E4329A100D5E754 /* Camera.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5B222E2E4329A100D5E754 /* Camera.swift */; };
 		1E5B22332E4329DC00D5E754 /* LookAt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5B22322E4329DC00D5E754 /* LookAt.swift */; };
@@ -32,6 +33,7 @@
 		1E3B4D902E435831002BAD42 /* ModelLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelLoader.swift; sourceTree = "<group>"; };
 		1E3B4D922E435842002BAD42 /* MeshBuffers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshBuffers.swift; sourceTree = "<group>"; };
 		1E3B4D952E435960002BAD42 /* truncated icosahedron.obj */ = {isa = PBXFileReference; lastKnownFileType = text; path = "truncated icosahedron.obj"; sourceTree = "<group>"; };
+		1E3B4D972E435AEE002BAD42 /* Light.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Light.swift; sourceTree = "<group>"; };
 		1E5B22212E431DD200D5E754 /* Uniforms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Uniforms.swift; sourceTree = "<group>"; };
 		1E5B222E2E4329A100D5E754 /* Camera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Camera.swift; sourceTree = "<group>"; };
 		1E5B22322E4329DC00D5E754 /* LookAt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LookAt.swift; sourceTree = "<group>"; };
@@ -105,8 +107,8 @@
 			isa = PBXGroup;
 			children = (
 				1EEED02F2E431A25007D5CF8 /* Assets.xcassets */,
-				1EEED0302E431A25007D5CF8 /* Environment.swift */,
 				1EEED0312E431A25007D5CF8 /* LearnMetalApp.swift */,
+				1EEED0302E431A25007D5CF8 /* Environment.swift */,
 				1EEED0322E431A25007D5CF8 /* PlatformCompatibility.swift */,
 			);
 			path = App;
@@ -116,6 +118,7 @@
 			isa = PBXGroup;
 			children = (
 				1E5B222E2E4329A100D5E754 /* Camera.swift */,
+				1E3B4D972E435AEE002BAD42 /* Light.swift */,
 				1E3B4D922E435842002BAD42 /* MeshBuffers.swift */,
 				1E5B22212E431DD200D5E754 /* Uniforms.swift */,
 			);
@@ -240,6 +243,7 @@
 			files = (
 				1E5B22332E4329DC00D5E754 /* LookAt.swift in Sources */,
 				1E3B4D852E432AA9002BAD42 /* Float4x4+Extension.swift in Sources */,
+				1E3B4D982E435AEE002BAD42 /* Light.swift in Sources */,
 				1EEED0422E431A25007D5CF8 /* Environment.swift in Sources */,
 				1EEED0432E431A25007D5CF8 /* LearnMetalApp.swift in Sources */,
 				1E3B4D912E435831002BAD42 /* ModelLoader.swift in Sources */,

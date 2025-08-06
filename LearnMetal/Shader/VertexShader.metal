@@ -27,9 +27,8 @@ vertex VertexOut vertex_main(VertexIn in [[stage_in]],
     float4 viewPosition = uniforms.viewMatrix * worldPosition;
     // 视图坐标 -> 裁剪坐标
     out.position = uniforms.projectionMatrix * viewPosition;
-    
-    // 直接传递顶点颜色
-    out.color = in.color;
+    // 归一化法线
+    out.normal = normalize(uniforms.normalMatrix * in.normal);
     
     return out;
 }

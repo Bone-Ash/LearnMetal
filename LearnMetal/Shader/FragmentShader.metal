@@ -12,7 +12,19 @@
 // float4: - 函数返回值，表示 RGBA 颜色值
 // fragment_main: - 函数名
 // VertexOut in: - 输入参数，传入顶点着色器输出的结构体 VertexOut
-fragment float4 fragment_main(VertexOut in [[stage_in]]) {
-    return in.color;  // 直接返回从顶点着色器传递过来的颜色值
-    // 这里只是把顶点着色器的颜色数据，显示在屏幕上
+fragment float4 fragment_main(VertexOut in [[stage_in]],
+                              constant Uniforms &uniforms [[buffer(0)]])
+{
+    float3 normal = in.normal;
+    float3 lightDirection = normalize(-uniforms.mainLight.direction);
+    float NdotL = max(dot(normal, lightDirection), 0.0);
+    
+    float3 baseColor = float3(1, 1, 1);
+    float3 diffuse = NdotL * uniforms.mainLight.color * uniforms.mainLight.intensity;
+    float3 color = baseColor * diffuse;
+    
+//    float3 ambient = float3(0.05, 0.05, 0.05);
+//    color += ambient;
+    
+    return float4(color, 1.0);
 }

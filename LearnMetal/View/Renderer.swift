@@ -26,6 +26,7 @@ class Renderer: NSObject, MTKViewDelegate {
     
     // MARK: - 参数表
     var vertexArgumentTable: MTL4ArgumentTable?     // 顶点着色器参数表
+    var fragmentArgumentTable: MTL4ArgumentTable?   // 片元着色器参数表
     
     // MARK: - 缓冲区
     private var uniformBuffers: [MTLBuffer] = []    // Uniform 缓冲区
@@ -61,6 +62,11 @@ class Renderer: NSObject, MTKViewDelegate {
         let vertexArgTableDescriptor = MTL4ArgumentTableDescriptor()
         vertexArgTableDescriptor.maxBufferBindCount = 2
         self.vertexArgumentTable = try device.makeArgumentTable(descriptor: vertexArgTableDescriptor)
+        
+        // 片段参数表
+        let fragmentArgTableDescriptor = MTL4ArgumentTableDescriptor()
+        fragmentArgTableDescriptor.maxBufferBindCount = 1
+        self.fragmentArgumentTable = try device.makeArgumentTable(descriptor: fragmentArgTableDescriptor)
         
         
         // MARK: - 配置缓冲区
@@ -119,6 +125,7 @@ class Renderer: NSObject, MTKViewDelegate {
         guard let pipelineState         = pipelineState,
               let depthState            = depthState,
               let vertexArgumentTable   = vertexArgumentTable,
+              let fragmentArgumentTable = fragmentArgumentTable,
               let mesh                  = meshBuffers,
               let drawable              = view.currentDrawable
         else { return }
@@ -146,6 +153,7 @@ class Renderer: NSObject, MTKViewDelegate {
         // 配置参数表
         vertexArgumentTable.setAddress(mesh.vertexBuffer.gpuAddress, index: 0)
         vertexArgumentTable.setAddress(uniformBuffer.gpuAddress, index: 1)
+        fragmentArgumentTable.setAddress(uniformBuffer.gpuAddress, index: 0)
         
         // 创建 Metal 4 渲染过程描述符
         let mtl4RenderPassDescriptor = MTL4RenderPassDescriptor()
@@ -167,7 +175,7 @@ class Renderer: NSObject, MTKViewDelegate {
         renderEncoder.setDepthStencilState(depthState)
         renderEncoder.setRenderPipelineState(pipelineState)
         renderEncoder.setArgumentTable(vertexArgumentTable, stages: .vertex)
-        
+        renderEncoder.setArgumentTable(fragmentArgumentTable, stages: .fragment)
         
         // MARK: - 绘制
         renderEncoder.drawIndexedPrimitives(
@@ -212,10 +220,19 @@ class Renderer: NSObject, MTKViewDelegate {
             far: 100
         )
         
+        let invTrans = modelMatrix.inverse.transpose
+        let normalMatrix = simd_float3x3(
+            SIMD3<Float>(invTrans.columns.0.x, invTrans.columns.0.y, invTrans.columns.0.z),
+            SIMD3<Float>(invTrans.columns.1.x, invTrans.columns.1.y, invTrans.columns.1.z),
+            SIMD3<Float>(invTrans.columns.2.x, invTrans.columns.2.y, invTrans.columns.2.z)
+        )
+        
         var uniforms = Uniforms(
             modelMatrix: modelMatrix,
             viewMatrix: viewMatrix,
             projectionMatrix: projectionMatrix,
+            normalMatrix: normalMatrix,
+            mainLight: Environment.mainLight
         )
         
         // 复制到 GPU 缓冲区
