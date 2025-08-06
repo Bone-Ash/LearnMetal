@@ -21,6 +21,7 @@ class Renderer: NSObject, MTKViewDelegate {
     let commandAllocators: [MTL4CommandAllocator]   // 命令分配器
     
     // MARK: - 渲染状态
+    var depthState: MTLDepthStencilState?           // 深度测试状态
     var pipelineState: MTLRenderPipelineState?      // 渲染管线状态
     
     // MARK: - 参数表
@@ -28,6 +29,8 @@ class Renderer: NSObject, MTKViewDelegate {
     
     // MARK: - 缓冲区
     private var vertexBuffer: MTLBuffer?            // 顶点缓冲区
+    private var indexBuffer: MTLBuffer?             // 索引缓冲区
+    private var uniformBuffers: [MTLBuffer] = []    // Uniform 缓冲区
     
     // MARK: - 状态
     private var frameNumber: Int = 0
@@ -45,13 +48,8 @@ class Renderer: NSObject, MTKViewDelegate {
         // MARK: - 设置参数表
         // 顶点参数表
         let vertexArgTableDescriptor = MTL4ArgumentTableDescriptor()
-        vertexArgTableDescriptor.maxBufferBindCount = 1
+        vertexArgTableDescriptor.maxBufferBindCount = 2
         self.vertexArgumentTable = try device.makeArgumentTable(descriptor: vertexArgTableDescriptor)
-        
-        // 片段参数表
-        let fragmentArgTableDescriptor = MTL4ArgumentTableDescriptor()
-        fragmentArgTableDescriptor.maxBufferBindCount = 1
-        
         
         // MARK: - 配置缓冲区
         // 顶点缓冲区
@@ -68,6 +66,28 @@ class Renderer: NSObject, MTKViewDelegate {
         vertexBuffer.label = "Vertex Buffer"
         self.vertexBuffer = vertexBuffer
         
+        // 索引缓冲区
+        guard let indexBuffer = device.makeBuffer(
+            bytes: indices,
+            length: MemoryLayout<UInt32>.size * indices.count,
+            options: .storageModeShared
+        ) else {
+            throw RendererError.failedToCreateIndexBuffer
+        }
+        indexBuffer.label = "Index Buffer"
+        self.indexBuffer = indexBuffer
+        
+        // Uniform 缓冲区
+        self.uniformBuffers = try (0..<kMaxFramesInFlight).map { index in
+            guard let uniformBuffer = device.makeBuffer(
+                length: MemoryLayout<Uniforms>.size,
+                options: .storageModeShared
+            ) else {
+                throw RendererError.failedToCreateUniformBuffer
+            }
+            uniformBuffer.label = "Uniform Buffer \(index)"
+            return uniformBuffer
+        }
         
         // MARK: - 配置渲染管线
         // 加载 Shader 库
@@ -110,22 +130,34 @@ class Renderer: NSObject, MTKViewDelegate {
         pipelineDescriptor.isRasterizationEnabled          = true
         pipelineDescriptor.rasterSampleCount               = 1
         
+        // 创建深度模板状态
+        let depthStateDescriptor = MTLDepthStencilDescriptor()
+        depthStateDescriptor.depthCompareFunction = .less
+        depthStateDescriptor.isDepthWriteEnabled = true
+        self.depthState = device.makeDepthStencilState(descriptor: depthStateDescriptor)
+        
         // 创建渲染管线状态
         self.pipelineState = try compiler.makeRenderPipelineState(descriptor: pipelineDescriptor)
     }
     
     
     func draw(in view: MTKView) {
+        
+        // MARK: - 准备编码
         guard let pipelineState         = pipelineState,
+              let depthState            = depthState,
               let vertexArgumentTable   = vertexArgumentTable,
               let vertexBuffer          = vertexBuffer,
+              let indexBuffer           = indexBuffer,
               let drawable              = view.currentDrawable
         else { return }
-                
+        
         commandBuffer.label = "Frame \(frameNumber) Command Buffer"
+        
         // 当前帧索引
         let frameIndex = frameNumber % kMaxFramesInFlight
         let frameAllocator = commandAllocators[frameIndex]
+        let uniformBuffer = uniformBuffers[frameIndex]
         
         // 等待 drawable 可用
         commandQueue.waitForDrawable(drawable)
@@ -133,11 +165,16 @@ class Renderer: NSObject, MTKViewDelegate {
         // 重置分配器并开始命令缓冲区
         frameAllocator.reset()
         
-        // 开始编码
+        
+        // MARK: - 开始编码
         commandBuffer.beginCommandBuffer(allocator: frameAllocator)
+        
+        // 更新 Uniforms
+        updateUniforms(uniformBuffer: uniformBuffer, view: view)
         
         // 配置参数表
         vertexArgumentTable.setAddress(vertexBuffer.gpuAddress, index: 0)
+        vertexArgumentTable.setAddress(uniformBuffer.gpuAddress, index: 1)
         
         // 创建 Metal 4 渲染过程描述符
         let mtl4RenderPassDescriptor = MTL4RenderPassDescriptor()
@@ -155,17 +192,23 @@ class Renderer: NSObject, MTKViewDelegate {
         ) else { return }
         
         
-        // MARK: - 设置渲染状态
+        // 设置渲染状态
+        renderEncoder.setDepthStencilState(depthState)
         renderEncoder.setRenderPipelineState(pipelineState)
         renderEncoder.setArgumentTable(vertexArgumentTable, stages: .vertex)
         
+        
         // MARK: - 绘制
-        renderEncoder.drawPrimitives(
+        renderEncoder.drawIndexedPrimitives(
             primitiveType: .triangle,
-            vertexStart: 0,
-            vertexCount: vertices.count
+            indexCount: indices.count,
+            indexType: .uint32,
+            indexBuffer: indexBuffer.gpuAddress,
+            indexBufferLength: MemoryLayout<UInt32>.size * indices.count
         )
         
+        
+        // MARK: - 完成编码
         renderEncoder.endEncoding()
         commandBuffer.endCommandBuffer()
         
@@ -179,6 +222,33 @@ class Renderer: NSObject, MTKViewDelegate {
         drawable.present()
         
         frameNumber += 1
+    }
+    
+    // MARK: - Uniform 更新
+    private func updateUniforms(uniformBuffer: MTLBuffer, view: MTKView) {
+        // 计算当前时间产生旋转
+        let time = CACurrentMediaTime()
+        let angle = Float(time) * 0.5
+        let modelMatrix = float4x4(rotationY: angle)
+        
+        let viewMatrix = Environment.camera.viewMatrix
+        
+        let aspect = Float(view.drawableSize.width / view.drawableSize.height)
+        let projectionMatrix = perspective(
+            aspect: aspect,
+            fovy: .pi / 3,
+            near: 0.1,
+            far: 100
+        )
+        
+        var uniforms = Uniforms(
+            modelMatrix: modelMatrix,
+            viewMatrix: viewMatrix,
+            projectionMatrix: projectionMatrix,
+        )
+        
+        // 复制到 GPU 缓冲区
+        memcpy(uniformBuffer.contents(), &uniforms, MemoryLayout<Uniforms>.size)
     }
     
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
@@ -195,4 +265,6 @@ enum RendererError: Error {
     case failedToCreateCommandBuffer
     case failedToLoadLibrary
     case failedToCreateVertexBuffer
+    case failedToCreateIndexBuffer
+    case failedToCreateUniformBuffer
 }

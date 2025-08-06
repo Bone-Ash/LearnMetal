@@ -26,3 +26,10 @@ struct VertexOut {
     // VertexIn 传入的 color，多数情况为原封不动传递给下一个阶段，但具体如何实现还是看顶点着色器
     float4 color;
 };
+
+// 全局变量 Uniforms
+struct Uniforms {
+    float4x4 modelMatrix;       // 模型矩阵
+    float4x4 viewMatrix;        // 视图矩阵
+    float4x4 projectionMatrix;  // 投影矩阵
+};

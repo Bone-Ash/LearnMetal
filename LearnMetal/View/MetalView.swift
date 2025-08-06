@@ -56,10 +56,14 @@ struct MetalView: ViewRepresentable {
         let mtkView = MTKView(frame: .zero, device: device)
         // 配置渲染格式
         mtkView.colorPixelFormat = .bgra8Unorm
-        // 设置渲染器代理，分离 UI 和 Renderer
+        // 设置渲染器代理
         mtkView.delegate = renderer
+        // 启用深度缓冲
+        mtkView.depthStencilPixelFormat = .depth32Float
         // 配置其他渲染属性
         mtkView.clearColor = MTLClearColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
+        mtkView.isPaused = false
+        mtkView.enableSetNeedsDisplay = false
         return mtkView
     }
 }
