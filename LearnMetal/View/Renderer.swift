@@ -28,9 +28,8 @@ class Renderer: NSObject, MTKViewDelegate {
     var vertexArgumentTable: MTL4ArgumentTable?     // 顶点着色器参数表
     
     // MARK: - 缓冲区
-    private var vertexBuffer: MTLBuffer?            // 顶点缓冲区
-    private var indexBuffer: MTLBuffer?             // 索引缓冲区
     private var uniformBuffers: [MTLBuffer] = []    // Uniform 缓冲区
+    private var meshBuffers: MeshBuffers?
     
     // MARK: - 状态
     private var frameNumber: Int = 0
@@ -45,38 +44,26 @@ class Renderer: NSObject, MTKViewDelegate {
         self.commandAllocators = try device.makeFrameAllocators(count: kMaxFramesInFlight)
         
         
+        // MARK: - 加载模型
+        guard let objModel = ModelLoader.loadModel(named: "truncated icosahedron", ext: "obj", device: device) else {
+            throw RendererError.failedToLoadModel
+        }
+        guard let mesh = MeshBuffers(asset: objModel, device: device) else {
+            throw RendererError.failedToLoadModel
+        }
+        self.meshBuffers = mesh
+        
+        let vertexDescriptor = MTKMetalVertexDescriptorFromModelIO(mesh.mdlVertexDescriptor)
+        
+        
         // MARK: - 设置参数表
         // 顶点参数表
         let vertexArgTableDescriptor = MTL4ArgumentTableDescriptor()
         vertexArgTableDescriptor.maxBufferBindCount = 2
         self.vertexArgumentTable = try device.makeArgumentTable(descriptor: vertexArgTableDescriptor)
         
+        
         // MARK: - 配置缓冲区
-        // 顶点缓冲区
-        guard let vertexBuffer = device.makeBuffer(
-            // 传递给 GPU 的数据
-            bytes: vertices,
-            // 数据的字节长度，以 Vertex 的内存大小 * 数组长度计算得出
-            length: MemoryLayout<Vertex>.size * vertices.count,
-            // 让 CPU 与 GPU 都能访问，性能开销较大，适用于频繁使用 CPU 动态更新的场景
-            options: .storageModeShared
-        ) else {
-            throw RendererError.failedToCreateVertexBuffer
-        }
-        vertexBuffer.label = "Vertex Buffer"
-        self.vertexBuffer = vertexBuffer
-        
-        // 索引缓冲区
-        guard let indexBuffer = device.makeBuffer(
-            bytes: indices,
-            length: MemoryLayout<UInt32>.size * indices.count,
-            options: .storageModeShared
-        ) else {
-            throw RendererError.failedToCreateIndexBuffer
-        }
-        indexBuffer.label = "Index Buffer"
-        self.indexBuffer = indexBuffer
-        
         // Uniform 缓冲区
         self.uniformBuffers = try (0..<kMaxFramesInFlight).map { index in
             guard let uniformBuffer = device.makeBuffer(
@@ -103,23 +90,6 @@ class Renderer: NSObject, MTKViewDelegate {
         fragmentFunctionDescriptor.name    = "fragment_main"
         
         
-        // MARK: - 顶点描述符
-        let vertexDescriptor = MTLVertexDescriptor()
-        // 配置 position 属性
-        vertexDescriptor.attributes[0].format = .float3 // 数据类型：3 个浮点数
-        vertexDescriptor.attributes[0].offset = 0 // position 的偏移量是 0
-        vertexDescriptor.attributes[0].bufferIndex = 0 // 从第 0 个缓冲区读取数据
-        
-        // 配置 color 属性
-        vertexDescriptor.attributes[1].format = .float4 // 数据类型：4 个浮点数
-        vertexDescriptor.attributes[1].offset = MemoryLayout<SIMD3<Float>>.stride // 偏移量是 16 字节
-        vertexDescriptor.attributes[1].bufferIndex = 0 // 也从第 0 个缓冲区读取数据
-        
-        // 定义顶点内存布局
-        vertexDescriptor.layouts[0].stride = MemoryLayout<Vertex>.stride // 32 字节
-        vertexDescriptor.layouts[0].stepRate = 1                         // 步频为 1，不跳过任何顶点
-        vertexDescriptor.layouts[0].stepFunction = .perVertex            // 逐顶点处理
-        
         // MARK: - 渲染管线描述符
         let pipelineDescriptor = MTL4RenderPipelineDescriptor()
         pipelineDescriptor.vertexFunctionDescriptor        = vertexFunctionDescriptor
@@ -130,6 +100,8 @@ class Renderer: NSObject, MTKViewDelegate {
         pipelineDescriptor.isRasterizationEnabled          = true
         pipelineDescriptor.rasterSampleCount               = 1
         
+        
+        // MARK: - 深度测试
         // 创建深度模板状态
         let depthStateDescriptor = MTLDepthStencilDescriptor()
         depthStateDescriptor.depthCompareFunction = .less
@@ -147,8 +119,7 @@ class Renderer: NSObject, MTKViewDelegate {
         guard let pipelineState         = pipelineState,
               let depthState            = depthState,
               let vertexArgumentTable   = vertexArgumentTable,
-              let vertexBuffer          = vertexBuffer,
-              let indexBuffer           = indexBuffer,
+              let mesh                  = meshBuffers,
               let drawable              = view.currentDrawable
         else { return }
         
@@ -173,7 +144,7 @@ class Renderer: NSObject, MTKViewDelegate {
         updateUniforms(uniformBuffer: uniformBuffer, view: view)
         
         // 配置参数表
-        vertexArgumentTable.setAddress(vertexBuffer.gpuAddress, index: 0)
+        vertexArgumentTable.setAddress(mesh.vertexBuffer.gpuAddress, index: 0)
         vertexArgumentTable.setAddress(uniformBuffer.gpuAddress, index: 1)
         
         // 创建 Metal 4 渲染过程描述符
@@ -201,10 +172,10 @@ class Renderer: NSObject, MTKViewDelegate {
         // MARK: - 绘制
         renderEncoder.drawIndexedPrimitives(
             primitiveType: .triangle,
-            indexCount: indices.count,
+            indexCount: mesh.indexCount,
             indexType: .uint32,
-            indexBuffer: indexBuffer.gpuAddress,
-            indexBufferLength: MemoryLayout<UInt32>.size * indices.count
+            indexBuffer: mesh.indexBuffer.gpuAddress,
+            indexBufferLength: MemoryLayout<UInt32>.size * mesh.indexCount
         )
         
         
@@ -262,6 +233,7 @@ class Renderer: NSObject, MTKViewDelegate {
 
 // MARK: - 错误定义
 enum RendererError: Error {
+    case failedToLoadModel
     case failedToCreateCommandBuffer
     case failedToLoadLibrary
     case failedToCreateVertexBuffer
