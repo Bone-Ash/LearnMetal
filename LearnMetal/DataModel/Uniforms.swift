@@ -13,5 +13,6 @@ struct Uniforms {
     let viewMatrix: float4x4
     let projectionMatrix: float4x4
     let normalMatrix: float3x3 // 法线矩阵
+    let cameraPosition: SIMD3<Float> // 相机位置
     let mainLight: Light // 主光源
 }

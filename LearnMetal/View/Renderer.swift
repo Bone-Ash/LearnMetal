@@ -177,6 +177,7 @@ class Renderer: NSObject, MTKViewDelegate {
         renderEncoder.setArgumentTable(vertexArgumentTable, stages: .vertex)
         renderEncoder.setArgumentTable(fragmentArgumentTable, stages: .fragment)
         
+        
         // MARK: - 绘制
         renderEncoder.drawIndexedPrimitives(
             primitiveType: .triangle,
@@ -232,6 +233,7 @@ class Renderer: NSObject, MTKViewDelegate {
             viewMatrix: viewMatrix,
             projectionMatrix: projectionMatrix,
             normalMatrix: normalMatrix,
+            cameraPosition: Environment.camera.position,
             mainLight: Environment.mainLight
         )
         

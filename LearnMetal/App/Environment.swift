@@ -11,7 +11,10 @@ enum Environment {
     static let mainLight: Light = Light(
         direction: SIMD3<Float>(1, -1, -1),
         color: SIMD3<Float>(1, 1, 1),
-        intensity: 0.5
+        intensity: 0.5,
+        specularColor: SIMD3<Float>(1, 1, 1),
+        specularIntensity: 1,
+        shininess: 128
     )
     
     static var camera = Camera(

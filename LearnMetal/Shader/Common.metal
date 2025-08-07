@@ -18,14 +18,21 @@ struct VertexIn {
 // 顶点着色器根据传入数据 VertexIn 进行一系列改动后，将输出数据打包成 VertexOut
 struct VertexOut {
     float4 position [[position]]; // 标记为 [[position]] 意味着它是 屏幕坐标
+    float3 worldPosition;         // 世界坐标
     float3 normal;                // 法线
 };
 
 // 光照
 struct Light {
-    float3 direction; // 方向
-    float3 color;     // 颜色
-    float intensity;  // 强度
+    // Lambertian 光照
+    float3 direction;        // 方向
+    float3 color;            // 颜色
+    float intensity;         // 强度
+    
+    // Blinn Phone 光照
+    float3 specularColor;    // 高光颜色
+    float specularIntensity; // 高光强度
+    float shininess;         // 高光指数
 };
 
 // 全局变量 Uniforms
@@ -34,5 +41,6 @@ struct Uniforms {
     float4x4 viewMatrix;        // 视图矩阵
     float4x4 projectionMatrix;  // 投影矩阵
     float3x3 normalMatrix;      // 法线
+    float3 cameraPosition;      // 相机坐标
     Light mainLight;            // 光照
 };

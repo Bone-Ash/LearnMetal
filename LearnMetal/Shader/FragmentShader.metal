@@ -16,15 +16,22 @@ fragment float4 fragment_main(VertexOut in [[stage_in]],
                               constant Uniforms &uniforms [[buffer(0)]])
 {
     float3 normal = in.normal;
+    float3 worldPosition = in.worldPosition;
+    float3 viewDirection = normalize(uniforms.cameraPosition - worldPosition);
     float3 lightDirection = normalize(-uniforms.mainLight.direction);
+    
+    float3 H = normalize(lightDirection + viewDirection);
+    float3 specular = uniforms.mainLight.specularColor * uniforms.mainLight.specularIntensity * pow(max(dot(normal, H), 0.0), uniforms.mainLight.shininess);
+    
     float NdotL = max(dot(normal, lightDirection), 0.0);
     
     float3 baseColor = float3(1, 1, 1);
     float3 diffuse = NdotL * uniforms.mainLight.color * uniforms.mainLight.intensity;
     float3 color = baseColor * diffuse;
     
-//    float3 ambient = float3(0.05, 0.05, 0.05);
-//    color += ambient;
+    float3 ambient = float3(0.05, 0.05, 0.05);
+    color += ambient;
+    color += specular;
     
     return float4(color, 1.0);
 }
